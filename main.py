@@ -36,6 +36,8 @@ def parse_location(path):
 
 
 def convertPdfToTxt(path):
+    if not str(path).endswith("pdf"):
+        return
     pdfFile = pathlib.Path(path)
     # print(file.parent)
     # print(file.name.split(".")[0])
@@ -66,7 +68,7 @@ def find_all_file(path, callback):
         for file in dirPath.iterdir():
             if file.is_dir():
                 find_all_file(str(file), callback)
-            elif file.is_file() and file.name.endswith(".pdf"):
+            elif file.is_file():
                 print("文件名： " + str(file))
                 callback(str(file))
 
@@ -113,6 +115,36 @@ def request_point_from_address(city, address):
     return "地址解析异常", 0, 0
 
 
+def trimTxtBlankRow(path):
+    if not str(path).endswith("txt"):
+        return
+    txtFile = pathlib.Path(path)
+    sentenceArray = []
+    with open(str(txtFile), "r") as f:
+        for line in f:
+            line.strip()
+            if not line == "\n":
+                array = line.split(".")
+                if len(array) > 1 and array[0].isdigit():
+                    for s in array[1:len(array)]:
+                        sentenceArray.append(s)
+                        # print(s)
+                else:
+                    sentenceArray.append(line)
+    # print(sentenceArray)
+    newTxtFilePath = str(path).replace("txt版", "txt版_改")
+    newTxtFile = pathlib.Path(newTxtFilePath)
+    if newTxtFile.exists():
+        newTxtFile.unlink()
+    elif not newTxtFile.parent.exists():
+        newTxtFile.parent.mkdir(parents=True)
+    with open(newTxtFilePath, "a+") as newF:
+        for sentence in sentenceArray:
+            newF.write(str(sentence))
+            # print(sentence, file=f)
+    newF.close()
+
+
 if __name__ == '__main__':
     # parse_people("asset/1.pdf")
     # parse_location("asset/1.pdf")
@@ -120,7 +152,9 @@ if __name__ == '__main__':
     # read_location_from_excel("asset/林芝市测试数据.xlsx")
     # print(request_point_from_address("日喀则市", "拉孜县曲下镇上退休基地东侧第三排"))
     # convertPdfToTxt("/Users/asprinchang/Downloads/疫情数据相关/2022年西藏疫情防控/阿里/202205西藏自治区阿里地区应对新冠肺炎疫情工作领导小组办公室公告(第5号）.pdf")
-    find_all_file("/Users/asprinchang/Downloads/疫情数据相关/2022年西藏疫情防控",convertPdfToTxt)
+    # find_all_file("/Users/asprinchang/Downloads/疫情数据相关/2022年西藏疫情防控", convertPdfToTxt)
+    # trimTxtBlankRow("/Users/asprinchang/Downloads/txt版/阿里/202219西藏自治区阿里地区应对新冠肺炎疫情工作领导小组办公室公告(19号).txt")
+    find_all_file("/Users/asprinchang/Downloads/txt版", trimTxtBlankRow)
 
 # 林芝
 # GET https://api.map.baidu.com/place/v2/search?query=巴宜区百盛药业有限公司&region=林芝地区&city_limit=98&output=json&scope=2&ak=EBRZYvda30n9EdMvL3k4veu8i7EeCsac
