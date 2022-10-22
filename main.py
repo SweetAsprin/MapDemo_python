@@ -22,6 +22,7 @@ def loadRequestedLocationList():
 
 def saveRequestedLocation():
     if len(locationHistoryList) >= 0:
+        print("开始保存当前地址请求记录到json文件")
         path = pathlib.Path("asset/查询历史记录.json")
         if path.exists():
             path.unlink()
@@ -95,48 +96,37 @@ def find_all_file(path, callback):
 
 
 def search_address(row):
-    result = request_poi_from_address(row["city"], row["address"])
-    # "address": address,
-    # "poi_name": firstResult["name"],
-    # "poi_address": firstResult["address"],
-    # "poi_city": firstResult["city"],
-    # "poi_district": firstResult["area"],
-    # "lat": firstResult["location"]["lat"],
-    # "lng": firstResult["location"]["lng"]
+    result = request_poi_from_address(str(row["city"]), str(row["address"]))
     return result["poi_name"], result["poi_address"], result["poi_city"], result["poi_district"], result["lat"], result[
         "lng"]
 
 
 def read_location_from_excel(path):
-    # 读取文件中所有的表
+    # 读取文件中所有的sheet
     sheetList = pd.read_excel(path, sheet_name=None)
     print("文件中总共表数量：" + str(len(sheetList)))
-    # for sheetName in sheetList.keys():
-    #     df = sheetList.get(sheetName)
-    #     print(df.head())
-    df = list(sheetList.values())[1]
-    print(df.head())
-    df[["poi_name", "poi_address", "poi_city", "poi_district", "lat", "lng"]] = df.apply(search_address, axis=1,
-                                                                                         result_type="expand")
-    print(df.head())
+    newSheetMap = {}
+    for sheetName in sheetList.keys():
+        print("正在打开sheet： " + sheetName)
+        df = sheetList.get(sheetName)
+        df[["poi_name", "poi_address", "poi_city", "poi_district", "lat", "lng"]] \
+            = df.apply(search_address, axis=1, result_type="expand")
+        newSheetMap[sheetName] = df
+        saveRequestedLocation()
 
-    # df_yellow = pd.read_excel(path, sheet_name="yellow")
-    # df_yellow[["poi", "lat", "lng"]] = df_yellow.apply(search_address, axis=1, result_type="expand")
-    # df_yellow.to_excel("asset/林芝市测试数据_修改后.xlsx", sheet_name="yellow")
-    #
-    # writer = pd.ExcelWriter("asset/林芝市测试数据_修改后.xlsx")
-    # df_red.to_excel(writer, sheet_name="red")
-    # df_yellow.to_excel(writer, sheet_name="yellow")
-    # writer.close()
+    writer = pd.ExcelWriter("asset/中高风险地区统计表-坐标.xlsx")
+    for sheetName in newSheetMap.keys():
+        newSheetMap[sheetName].to_excel(writer, sheet_name=sheetName)
+    writer.close()
 
 
 def request_poi_from_address(city, address):
     if len(locationHistoryList) == 0:
         print("已查询记录尚未读取，开始从文件中读取历史查询记录")
         loadRequestedLocationList()
-    if not locationHistoryList.get(address) is None:
-        print("缓存中存在地址：" + city + "-" + address + "，直接返回结果")
-        return locationHistoryList.get(address)
+    if not locationHistoryList.get(city + "-" + address) is None:
+        print("缓存中存在地址:" + city + "-" + address)
+        return locationHistoryList.get(city + "-" + address)
     else:
         print("开始从网络查询:" + city + "-" + address)
     codeMap = {"山南市": "97", "林芝市": "98", "昌都市": "99", "拉萨市": "100", "那曲市": "101", "日喀则市": "100",
@@ -152,26 +142,26 @@ def request_poi_from_address(city, address):
             firstResult = jsonResponse["results"][0]
             if not firstResult.get("location") is None:
                 # print("查询 " + address + " 成功：" + str(firstResult))
-                locationHistoryList[address] = {"address": city + "-" + address,
-                                                "poi_name": firstResult["name"],
-                                                "poi_address": firstResult["address"],
-                                                "poi_city": firstResult["city"],
-                                                "poi_district": firstResult["area"],
-                                                "lat": firstResult["location"]["lat"],
-                                                "lng": firstResult["location"]["lng"]}
-                return locationHistoryList[address]
+                locationHistoryList[city + "-" + address] = {"address": city + "-" + address,
+                                                             "poi_name": firstResult.get("name", "null"),
+                                                             "poi_address": firstResult.get("address", "null"),
+                                                             "poi_city": firstResult.get("city", "null"),
+                                                             "poi_district": firstResult.get("area", "null"),
+                                                             "lat": firstResult["location"]["lat"],
+                                                             "lng": firstResult["location"]["lng"]}
+                return locationHistoryList[city + "-" + address]
             else:
                 print("查询 " + address + " ---- 未返回location ：" + str(firstResult))
     else:
         print("请求http返回值异常：" + response.status_code)
-    locationHistoryList[address] = {"address": city + "-" + address,
-                                    "poi_name": "地址解析异常",
-                                    "poi_address": "未知地址",
-                                    "poi_city": "未知城市",
-                                    "poi_district": "未知区县",
-                                    "lat": 0,
-                                    "lng": 0}
-    return locationHistoryList[address]
+    locationHistoryList[city + "-" + address] = {"address": city + "-" + address,
+                                                 "poi_name": "地址解析异常",
+                                                 "poi_address": "未知地址",
+                                                 "poi_city": "未知城市",
+                                                 "poi_district": "未知区县",
+                                                 "lat": 0,
+                                                 "lng": 0}
+    return locationHistoryList[city + "-" + address]
 
 
 def trimTxtBlankRow(path):
@@ -214,7 +204,6 @@ if __name__ == '__main__':
     # trimTxtBlankRow("/Users/asprinchang/Downloads/txt版/阿里/202219西藏自治区阿里地区应对新冠肺炎疫情工作领导小组办公室公告(19号).txt")
     # find_all_file("/Users/asprinchang/Downloads/txt版", trimTxtBlankRow)
     read_location_from_excel("asset/中高风险地区统计表.xlsx")
-    saveRequestedLocation()
 
 # 林芝
 # GET https://api.map.baidu.com/place/v2/search?query=巴宜区百盛药业有限公司&region=林芝地区&city_limit=98&output=json&scope=2&ak=EBRZYvda30n9EdMvL3k4veu8i7EeCsac
