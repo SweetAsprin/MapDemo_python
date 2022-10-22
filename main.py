@@ -114,10 +114,48 @@ def read_location_from_excel(path):
         newSheetMap[sheetName] = df
         saveRequestedLocation()
 
-    writer = pd.ExcelWriter("asset/中高风险地区统计表-坐标.xlsx")
+    writer = pd.ExcelWriter("asset/中高风险地区统计表-包含坐标.xlsx")
     for sheetName in newSheetMap.keys():
         newSheetMap[sheetName].to_excel(writer, sheet_name=sheetName)
     writer.close()
+
+
+def convertLocationExcelToJsonFile(path):
+    sheetMap = pd.read_excel(path, sheet_name=None)
+    print("文件中总共表数量：" + str(len(sheetMap)))
+    totalDataMap = {}
+    for sheetName in sheetMap.keys():
+        nameArray = str(sheetName).split("-")
+        if totalDataMap.get("{}-{}".format(nameArray[0], nameArray[1])) is None:
+            totalDataMap["{}-{}".format(nameArray[0], nameArray[1])] = {}
+        if totalDataMap.get("{}-{}".format(nameArray[0], nameArray[1])).get(nameArray[2]) is None:
+            totalDataMap["{}-{}".format(nameArray[0], nameArray[1])][nameArray[2]] = {}
+
+        df = sheetMap.get(sheetName).fillna("null")
+        map = totalDataMap["{}-{}".format(nameArray[0], nameArray[1])][nameArray[2]]
+
+        for index, row in df.iterrows():
+            if not checkInvalid(row):
+                if map.get(row["poi_city"]) is None:
+                    map[row["poi_city"]] = {}
+                if map.get(row["poi_city"]).get(row["poi_district"]) is None:
+                    map[row["poi_city"]][row["poi_district"]] = []
+                addressList = map[row["poi_city"]][row["poi_district"]]
+                dataMap = row.to_dict()
+                dataMap.pop("Unnamed: 0")
+                dataMap["date"] = "{}-{}".format(nameArray[0], nameArray[1])
+                addressList.append(dataMap)
+
+    path = pathlib.Path("asset/totalData.json")
+    if path.exists():
+        path.unlink()
+    with open(str(path), "w") as file:
+        json.dump(totalDataMap, file, ensure_ascii=False)
+
+
+def checkInvalid(row):
+    return row["poi_name"] == "null" or row["poi_address"] == "null" or row["poi_city"] == "null" or row[
+        "poi_district"] == "null" or row["lat"] == 0 or row["lng"] == 0
 
 
 def request_poi_from_address(city, address):
@@ -155,10 +193,10 @@ def request_poi_from_address(city, address):
     else:
         print("请求http返回值异常：" + response.status_code)
     locationHistoryList[city + "-" + address] = {"address": city + "-" + address,
-                                                 "poi_name": "地址解析异常",
-                                                 "poi_address": "未知地址",
-                                                 "poi_city": "未知城市",
-                                                 "poi_district": "未知区县",
+                                                 "poi_name": "null",
+                                                 "poi_address": "null",
+                                                 "poi_city": "null",
+                                                 "poi_district": "null",
                                                  "lat": 0,
                                                  "lng": 0}
     return locationHistoryList[city + "-" + address]
@@ -203,7 +241,8 @@ if __name__ == '__main__':
     # find_all_file("/Users/asprinchang/Downloads/疫情数据相关/2022年西藏疫情防控", convertPdfToTxt)
     # trimTxtBlankRow("/Users/asprinchang/Downloads/txt版/阿里/202219西藏自治区阿里地区应对新冠肺炎疫情工作领导小组办公室公告(19号).txt")
     # find_all_file("/Users/asprinchang/Downloads/txt版", trimTxtBlankRow)
-    read_location_from_excel("asset/中高风险地区统计表.xlsx")
+    # read_location_from_excel("asset/中高风险地区统计表-原始统计.xlsx")
+    convertLocationExcelToJsonFile("asset/中高风险地区统计表-包含坐标.xlsx")
 
 # 林芝
 # GET https://api.map.baidu.com/place/v2/search?query=巴宜区百盛药业有限公司&region=林芝地区&city_limit=98&output=json&scope=2&ak=EBRZYvda30n9EdMvL3k4veu8i7EeCsac
