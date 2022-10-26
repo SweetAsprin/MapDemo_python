@@ -163,12 +163,10 @@ def convertLocationExcelToJsonFile(locationExcelPath, patientCountExcelPath):
         for index, row in df.iterrows():
             if cityMap.get(row["city"]) is None:
                 cityMap[row["city"]] = {}
-            if cityMap.get(row["city"]).get(row["district"]) is None:
-                cityMap[row["city"]][row["district"]] = []
-            recordList = cityMap[row["city"]][row["district"]]
+            districtMap = cityMap[row["city"]]
             record = row.to_dict()
             record["date"] = "{}-{}".format(nameArray[0], nameArray[1])
-            recordList.append(record)
+            districtMap[row["district"]] = record
 
     path = pathlib.Path("asset/totalData.json")
     if path.exists():
