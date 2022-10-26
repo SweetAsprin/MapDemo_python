@@ -120,31 +120,55 @@ def read_location_from_excel(path):
     writer.close()
 
 
-def convertLocationExcelToJsonFile(path):
-    sheetMap = pd.read_excel(path, sheet_name=None)
-    print("文件中总共表数量：" + str(len(sheetMap)))
+def convertLocationExcelToJsonFile(locationExcelPath, patientCountExcelPath):
+    locationSheetMap = pd.read_excel(locationExcelPath, sheet_name=None)
+    patientCountSheetMap = pd.read_excel(patientCountExcelPath, sheet_name=None, dtype=object)
+    print("风险区文件中总共表数量：" + str(len(locationSheetMap)))
+    print("病历统计文件中总共表数量：" + str(len(patientCountSheetMap)))
     totalDataMap = {}
-    for sheetName in sheetMap.keys():
+    # 开始统计风险区数据
+    for sheetName in locationSheetMap.keys():
         nameArray = str(sheetName).split("-")
         if totalDataMap.get("{}-{}".format(nameArray[0], nameArray[1])) is None:
             totalDataMap["{}-{}".format(nameArray[0], nameArray[1])] = {}
         if totalDataMap.get("{}-{}".format(nameArray[0], nameArray[1])).get(nameArray[2]) is None:
             totalDataMap["{}-{}".format(nameArray[0], nameArray[1])][nameArray[2]] = {}
 
-        df = sheetMap.get(sheetName).fillna("null")
-        map = totalDataMap["{}-{}".format(nameArray[0], nameArray[1])][nameArray[2]]
+        df = locationSheetMap.get(sheetName).fillna("null")
+        cityMap = totalDataMap["{}-{}".format(nameArray[0], nameArray[1])][nameArray[2]]
 
         for index, row in df.iterrows():
-            if not checkInvalid(row):
-                if map.get(row["poi_city"]) is None:
-                    map[row["poi_city"]] = {}
-                if map.get(row["poi_city"]).get(row["poi_district"]) is None:
-                    map[row["poi_city"]][row["poi_district"]] = []
-                addressList = map[row["poi_city"]][row["poi_district"]]
-                dataMap = row.to_dict()
-                dataMap.pop("Unnamed: 0")
-                dataMap["date"] = "{}-{}".format(nameArray[0], nameArray[1])
-                addressList.append(dataMap)
+            if not checkLocationPointDataInvalid(row):
+                if cityMap.get(row["poi_city"]) is None:
+                    cityMap[row["poi_city"]] = {}
+                if cityMap.get(row["poi_city"]).get(row["poi_district"]) is None:
+                    cityMap[row["poi_city"]][row["poi_district"]] = []
+                pointList = cityMap[row["poi_city"]][row["poi_district"]]
+                pointData = row.to_dict()
+                pointData.pop("Unnamed: 0")
+                pointData["date"] = "{}-{}".format(nameArray[0], nameArray[1])
+                pointList.append(pointData)
+
+    # 开始统计病例增长数据
+    for sheetName in patientCountSheetMap.keys():
+        nameArray = str(sheetName).split("-")
+        if totalDataMap.get("{}-{}".format(nameArray[0], nameArray[1])) is None:
+            totalDataMap["{}-{}".format(nameArray[0], nameArray[1])] = {}
+        if totalDataMap.get("{}-{}".format(nameArray[0], nameArray[1])).get("patient") is None:
+            totalDataMap["{}-{}".format(nameArray[0], nameArray[1])]["patient"] = {}
+
+        df = patientCountSheetMap.get(sheetName).fillna(0)
+        cityMap = totalDataMap["{}-{}".format(nameArray[0], nameArray[1])]["patient"]
+
+        for index, row in df.iterrows():
+            if cityMap.get(row["city"]) is None:
+                cityMap[row["city"]] = {}
+            if cityMap.get(row["city"]).get(row["district"]) is None:
+                cityMap[row["city"]][row["district"]] = []
+            recordList = cityMap[row["city"]][row["district"]]
+            record = row.to_dict()
+            record["date"] = "{}-{}".format(nameArray[0], nameArray[1])
+            recordList.append(record)
 
     path = pathlib.Path("asset/totalData.json")
     if path.exists():
@@ -153,7 +177,7 @@ def convertLocationExcelToJsonFile(path):
         json.dump(totalDataMap, file, ensure_ascii=False)
 
 
-def checkInvalid(row):
+def checkLocationPointDataInvalid(row):
     return row["poi_name"] == "null" or row["poi_address"] == "null" or row["poi_city"] == "null" or row[
         "poi_district"] == "null" or row["lat"] == 0 or row["lng"] == 0
 
@@ -242,7 +266,7 @@ if __name__ == '__main__':
     # trimTxtBlankRow("/Users/asprinchang/Downloads/txt版/阿里/202219西藏自治区阿里地区应对新冠肺炎疫情工作领导小组办公室公告(19号).txt")
     # find_all_file("/Users/asprinchang/Downloads/txt版", trimTxtBlankRow)
     # read_location_from_excel("asset/中高风险地区统计表-原始统计.xlsx")
-    convertLocationExcelToJsonFile("asset/中高风险地区统计表-包含坐标.xlsx")
+    convertLocationExcelToJsonFile("asset/中高风险地区统计表-包含坐标.xlsx", "asset/西藏各地区单日新增病例数统计.xlsx")
 
 # 林芝
 # GET https://api.map.baidu.com/place/v2/search?query=巴宜区百盛药业有限公司&region=林芝地区&city_limit=98&output=json&scope=2&ak=EBRZYvda30n9EdMvL3k4veu8i7EeCsac
