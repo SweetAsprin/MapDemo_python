@@ -2,12 +2,13 @@ import pathlib
 import pandas
 import pdfplumber
 import re
-import numpy as np
 import pandas as pd
 import requests
 import json
 
 locationHistoryList = {}
+
+
 def loadRequestedLocationList():
     path = pathlib.Path("asset/查询历史记录.json")
     if path.exists():
