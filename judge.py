@@ -33,8 +33,20 @@ def fillCourtCityDistrict(data: json):
         for district in city["subCity"]:
             districtName: str = district.replace("县", "").replace("区", "")
             if address.__contains__(districtName):  # 当前值包含特定县区名称，设置县名，并填充对应市名
-                data["判决机关所在县区"] = district
                 data["判决机关所在地市"] = city["name"]
+                data["判决机关所在县区"] = district
+    if data["判决机关所在地市"] is None and data["判决机关所在县区"] is None:
+        data["判决机关所在地市"] = "拉萨市"
+        data["判决机关所在县区"] = "城关区"
+    else:
+        if data["判决机关所在县区"] is None:
+            for city in cityMap:
+                if city["name"] == data["判决机关所在地市"]:
+                    data["判决机关所在县区"] = city["subCity"][0]
+                    break
+
+    data["判决机关所在地市"] = data["判决机关所在地市"].replace("市", "").replace("地区", "")
+    data["判决机关所在县区"] = data["判决机关所在县区"].replace("县", "").replace("区", "")
 
 
 # 填充"案号缩写新",值来自旧案号修改
@@ -80,12 +92,12 @@ def fillCulpritHomeInfo(data: json):
             needBreak = False
             cityName: str = city["name"].replace("市", "").replace("地区", "")
             if homeAddress.__contains__(cityName):  # 当前值包含特定市名称，直接设置市名
-                data["被告人所在市"] = cityName
+                data["被告人所在市"] = city["name"]
                 homeInTibet = True
             for district in city["subCity"]:
                 districtName: str = district.replace("县", "").replace("区", "")
                 if homeAddress.__contains__(districtName):  # 当前值包含特定县区名称，设置县名，并填充对应市名
-                    data["被告人所在市"] = cityName
+                    data["被告人所在市"] = city["name"]
                     data["被告人所在县"] = district
                     homeInTibet = True
                     needBreak = True
@@ -95,6 +107,17 @@ def fillCulpritHomeInfo(data: json):
         if not homeInTibet:
             data["被告人所在市"] = "内地"
             data["被告人所在县"] = "内地"
+
+        if data["被告人所在县"] is None and data["被告人所在市"] is not None and data["被告人所在市"] != "未知" and \
+                data["被告人所在市"] != "内地":
+            # data["被告人所在县"] = cityMap[data["被告人所在市"]][0]
+            for city in cityMap:
+                if city["name"] == data["被告人所在市"]:
+                    data["被告人所在县"] = city["subCity"][0]
+                    break
+
+    data["被告人所在市"] = data["被告人所在市"].replace("市", "").replace("地区", "")
+    data["被告人所在县"] = data["被告人所在县"].replace("县", "").replace("区", "")
 
 
 # 格式化赔偿金额数字
@@ -164,7 +187,9 @@ def fillJudgeNameAndNation(data: json):
                     secondJudgeIndex = index
 
             judgeNameDesc = "审判" + tempJudgeDesc[0:secondJudgeIndex]
-            judgeName = judgeNameDesc.replace("审判长", "").replace("审判员", "").replace(",", "").replace("，", "")
+            judgeName = judgeNameDesc.replace("审判长", "").replace("审判员", "").replace(",", "").replace("，",
+                                                                                                           "").replace(
+                "：", "")
             isTibetName = checkIfNameIsTibet(judgeName)
             # if not isTibetName:
             #     print("当前判断得到的审判长姓名为：" + judgeName + " 非藏族")
@@ -178,14 +203,36 @@ def fillJudgeNameAndNation(data: json):
 # 对特定数据格式做优化
 def formatData(row: dict):
     isBaoLi: str = row["前科是否是八种暴力性犯罪"]
-    if isBaoLi is None:
+    if isBaoLi is None or isBaoLi == "":
         row["前科是否是八种暴力性犯罪"] = "未知"
     elif len(isBaoLi) > 1:
         row["前科是否是八种暴力性犯罪"] = isBaoLi[0]
 
+    # 处理所在市/县字段为拼音
+    if row["判决机关所在地市"] is not None:
+        row["判决机关所在地市"] = pypinyin.slug(row["判决机关所在地市"], separator="")
+    if row["判决机关所在县区"] is not None:
+        row["判决机关所在县区"] = pypinyin.slug(row["判决机关所在县区"], separator="")
+    if row["被告人所在市"] is not None:
+        row["被告人所在市"] = pypinyin.slug(row["被告人所在市"], separator="")
+    if row["被告人所在县"] is not None:
+        row["被告人所在县"] = pypinyin.slug(row["被告人所在县"], separator="")
+
+    # 处理被告年龄字段
+    age: str = row["被告人年龄"]
+    if age.__contains__("（"):
+        row["被告人年龄"] = age[0:age.find("（")]
+
     for key, value in row.items():
+        # 处理是否类字段值后面跟括号备注的情况
+        if key.startswith("是否") and value != "未知" and value is not None:
+            row[key] = row[key][0]
+        # 处理所有字段的"未显示"值
         if str(value).__contains__("未显示") or value is None:
             row[key] = "未知"
+        # 处理所有字段值中的空格
+        if str(value).__contains__(" "):
+            row[key] = value.replace(" ", "")
 
 
 # 计算被告人人数并根据人数排序
@@ -193,7 +240,7 @@ def calcCulpritNumAndSort(originDataJsonArray: list):
     # 计算人数
     for data in originDataJsonArray:
         culpritDesc: str = data["被告人"]
-        culpritList = re.split("，|,", culpritDesc)
+        culpritList = re.split("，|,|、", culpritDesc)
         data["被告人人数"] = len(culpritList)
     # 根据人数排序
     # print("总条数：" + len(originDataJsonArray).__str__())
@@ -214,27 +261,27 @@ def calcCulpritNumAndSort(originDataJsonArray: list):
 def splitMultipleCulpritData(multipleCulpritDataList):
     newDataList = []
     for data in multipleCulpritDataList:
-        culpritList = re.split("，|,", data["被告人"].replace(" ", ""))
-        culpritNationList = re.split("，|,", data["被告人民族"].replace(" ", ""))
-        culpritHomeList = re.split("，|,", data["被告人户籍"].replace(" ", ""))
-        culpritGenderList = re.split("，|,", data["被告人性别"].replace(" ", ""))
-        culpritAgeList = re.split("，|,", data["被告人年龄"].replace(" ", ""))
-        culpritResultList = re.split("，|,", data["判处结果"].replace(" ", ""))
-        culpritIsZiShouList = re.split("，|,", data["是否自首"].replace(" ", ""))
-        culpritIsLiGongList = re.split("，|,", data["是否立功"].replace(" ", ""))
-        culpritIsTanBaiList = re.split("，|,", data["是否坦白"].replace(" ", ""))
-        culpritIsCongFanList = re.split("，|,", data["是否从犯"].replace(" ", ""))
-        culpritIsRenZuiList = re.split("，|,", data["是否认罪"].replace(" ", ""))
-        culpritIsHuaiYunList = re.split("，|,", data["是否怀孕"].replace(" ", ""))
-        culpritIsCanRenList = re.split("，|,", data["是否特别残忍"].replace(" ", ""))
-        culpritIsGongKaiList = re.split("，|,", data["是否公开场合行凶"].replace(" ", ""))
-        culpritIsXiongQiList = re.split("，|,", data["是否使用凶器"].replace(" ", ""))
-        culpritIsChuFanList = re.split("，|,", data["是否初犯偶犯"].replace(" ", ""))
-        culpritIsLeiFanList = re.split("，|,", data["是否构成累犯"].replace(" ", ""))
-        culpritIsBaoLiList = re.split("，|,", data["前科是否是八种暴力性犯罪"].replace(" ", "")) \
+        culpritList = re.split("，|,|。|、", data["被告人"].replace(" ", ""))
+        culpritNationList = re.split("，|,|。|、", data["被告人民族"].replace(" ", ""))
+        culpritHomeList = re.split("，|,|。|、", data["被告人户籍"].replace(" ", ""))
+        culpritGenderList = re.split("，|,|。|、", data["被告人性别"].replace(" ", ""))
+        culpritAgeList = re.split("，|,|。|、", data["被告人年龄"].replace(" ", ""))
+        culpritResultList = re.split("，|,|。|、", data["判处结果"].replace(" ", ""))
+        culpritIsZiShouList = re.split("，|,|。|、", data["是否自首"].replace(" ", ""))
+        culpritIsLiGongList = re.split("，|,|。|、", data["是否立功"].replace(" ", ""))
+        culpritIsTanBaiList = re.split("，|,|。|、", data["是否坦白"].replace(" ", ""))
+        culpritIsCongFanList = re.split("，|,|。|、", data["是否从犯"].replace(" ", ""))
+        culpritIsRenZuiList = re.split("，|,|。|、", data["是否认罪"].replace(" ", ""))
+        culpritIsHuaiYunList = re.split("，|,|。|、", data["是否怀孕"].replace(" ", ""))
+        culpritIsCanRenList = re.split("，|,|。|、", data["是否特别残忍"].replace(" ", ""))
+        culpritIsGongKaiList = re.split("，|,|。|、", data["是否公开场合行凶"].replace(" ", ""))
+        culpritIsXiongQiList = re.split("，|,|。|、", data["是否使用凶器"].replace(" ", ""))
+        culpritIsChuFanList = re.split("，|,|。|、", data["是否初犯偶犯"].replace(" ", ""))
+        culpritIsLeiFanList = re.split("，|,|。|、", data["是否构成累犯"].replace(" ", ""))
+        culpritIsBaoLiList = re.split("，|,|。|、", data["前科是否是八种暴力性犯罪"].replace(" ", "")) \
             if data["前科是否是八种暴力性犯罪"] is not None else [" "]
-        culpritIsGuoCuoList = re.split("，|,", data["被害人是否有过错"].replace(" ", ""))
-        culpritIsLiangJieList = re.split("，|,", data["是否积极赔偿被害人损失并取得刑事谅解"].replace(" ", ""))
+        culpritIsGuoCuoList = re.split("，|,|。|、", data["被害人是否有过错"].replace(" ", ""))
+        culpritIsLiangJieList = re.split("，|,|。|、", data["是否积极赔偿被害人损失并取得刑事谅解"].replace(" ", ""))
 
         for index, culpritName in enumerate(culpritList):
             culpritInfo = {}
@@ -243,7 +290,7 @@ def splitMultipleCulpritData(multipleCulpritDataList):
             culpritInfo["判决机关所在地市"] = data["判决机关所在地市"]
             culpritInfo["判决机关所在县区"] = data["判决机关所在县区"]
             culpritInfo["案号"] = data["案号"]
-            culpritInfo["案号缩写旧"] = data["案号缩写旧"]
+            culpritInfo["案号缩写旧"] = data["案号缩写旧"] + "-" + str(index + 1)
             culpritInfo["案号缩写新"] = data["案号缩写新"]
             culpritInfo["判决日期"] = data["判决日期"]
             culpritInfo["判决年份"] = data["判决年份"]
