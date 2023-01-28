@@ -7,6 +7,7 @@ import cn2an
 
 cityMap = None
 tibetNameList = None
+codeDictJsonMap = None
 
 
 # 初始化西藏地区行政区域数组
@@ -334,13 +335,14 @@ def splitMultipleCulpritData(multipleCulpritDataList):
 
 
 # 保存新数据到excel
-def saveDataToExcel(resultDF):
-    path = pathlib.Path("asset/西藏案件量刑数据(修复版本).xlsx")
+def saveDataToExcel(resultDF, fineName):
+    path = pathlib.Path(fineName)
     if path.exists():
         path.unlink()
     resultDF.to_excel(str(path), sheet_name='故意伤害罪', index=False)
 
 
+# 将原始数据填充格式化
 def modifyData():
     global cityMap
     global tibetNameList
@@ -366,8 +368,210 @@ def modifyData():
         formatData(row)  # 处理特定数据格式
     # print(originDataJsonArray)
     resultDF = pd.json_normalize(originDataJsonArray)  # 转回dataFrame
-    saveDataToExcel(resultDF)
+    saveDataToExcel(resultDF, "asset/西藏案件量刑数据(修复版本).xlsx")
+
+
+# 将格式化之后的数据进行编码处理
+def codingData():
+    global codeDictJsonMap
+    path = pathlib.Path("asset/西藏案件量刑数据(待编码).xlsx")
+    codeDictFrame = pd.read_excel(str(path), sheet_name="编码字典")  # 读取编码字典数据
+    codeDictJsonMap = json.loads(codeDictFrame.to_json(force_ascii=False))  # 转成json格式
+    # print(codeDictJsonMap)
+
+    originDataFrame = pd.read_excel(str(path), sheet_name="故意伤害罪")  # 读取原始数据
+    originDataJsonArray: list = json.loads(originDataFrame.to_json(orient="records", force_ascii=False))  # 转成json格式
+
+    for data in originDataJsonArray:  # 判决机关地市
+        court_city = data["判决机关地市"]
+        for k, v in codeDictJsonMap["判决机关地市"].items():
+            if v is not None and v == court_city:
+                data["court_city"] = int(k) + 1
+                break
+    for data in originDataJsonArray:  # 判决机关县区
+        court_district = data["判决机关县区"]
+        for k, v in codeDictJsonMap["判决机关县区"].items():
+            if v is not None and v == court_district:
+                data["court_district"] = int(k) + 1
+                break
+    for data in originDataJsonArray:  # 判决年份
+        year = data["判决年份"]
+        for k, v in codeDictJsonMap["判决年份"].items():
+            if v is not None and v == year:
+                data["year"] = int(k) + 1
+                break
+    for data in originDataJsonArray:  # 辩护人
+        lawyer = data["辩护人"]
+        for k, v in codeDictJsonMap["辩护人"].items():
+            if v is not None and v == lawyer:
+                data["lawyer"] = int(k) + 1
+                break
+    for data in originDataJsonArray:  # 被告人民族
+        suspect_nation = data["被告人民族"]
+        for k, v in codeDictJsonMap["被告人民族"].items():
+            if v is not None and v == suspect_nation:
+                data["suspect_nation"] = int(k) + 1
+                break
+    for data in originDataJsonArray:  # 被告人人数
+        suspect_count = data["被告人人数"]
+        for k, v in codeDictJsonMap["被告人人数"].items():
+            if v is not None and v == suspect_count:
+                data["suspect_count"] = int(k) + 1
+                break
+    for data in originDataJsonArray:  # 被告人户籍地市
+        suspect_city = data["被告人户籍地市"]
+        for k, v in codeDictJsonMap["被告人户籍地市"].items():
+            if v is not None and v == suspect_city:
+                data["suspect_city"] = int(k) + 1
+                break
+    for data in originDataJsonArray:  # 被告人户籍县区
+        suspect_district = data["被告人户籍县区"]
+        for k, v in codeDictJsonMap["被告人户籍县区"].items():
+            if v is not None and v == suspect_district:
+                data["suspect_district"] = int(k) + 1
+                break
+    for data in originDataJsonArray:  # 被告人性别
+        gender = data["被告人性别"]
+        for k, v in codeDictJsonMap["被告人性别"].items():
+            if v is not None and v == gender:
+                data["gender"] = int(k) + 1
+                break
+    for data in originDataJsonArray:  # 被告人年龄
+        age = data["被告人年龄"]
+        for k, v in codeDictJsonMap["被告人年龄"].items():
+            if v is not None and v == age:
+                data["age"] = int(k) + 1
+                break
+    for data in originDataJsonArray:  # 被害人伤残等级
+        disability_degree = data["被害人伤残等级"]
+        for k, v in codeDictJsonMap["被害人伤残等级"].items():
+            if v is not None and v == disability_degree:
+                data["disability_degree"] = int(k) + 1
+                break
+    for data in originDataJsonArray:  # 审判长民族
+        justice_nation = data["审判长民族"]
+        for k, v in codeDictJsonMap["审判长民族"].items():
+            if v is not None and v == justice_nation:
+                data["justice_nation"] = int(k) + 1
+                break
+    for data in originDataJsonArray:  # 是否自首
+        is_confess = data["是否自首"]
+        for k, v in codeDictJsonMap["是否自首"].items():
+            if v is not None and v == is_confess:
+                data["is_confess"] = int(k) + 1
+                break
+    for data in originDataJsonArray:  # 是否立功
+        is_meritorious = data["是否立功"]
+        for k, v in codeDictJsonMap["是否立功"].items():
+            if v is not None and v == is_meritorious:
+                data["is_meritorious"] = int(k) + 1
+                break
+    for data in originDataJsonArray:  # 是否坦白
+        is_honest = data["是否坦白"]
+        for k, v in codeDictJsonMap["是否坦白"].items():
+            if v is not None and v == is_honest:
+                data["is_honest"] = int(k) + 1
+                break
+    for data in originDataJsonArray:  # 是否从犯
+        is_accessary = data["是否从犯"]
+        for k, v in codeDictJsonMap["是否从犯"].items():
+            if v is not None and v == is_accessary:
+                data["is_accessary"] = int(k) + 1
+                break
+    for data in originDataJsonArray:  # 是否认罪
+        is_peccavi = data["是否认罪"]
+        for k, v in codeDictJsonMap["是否认罪"].items():
+            if v is not None and v == is_peccavi:
+                data["is_peccavi"] = int(k) + 1
+                break
+    for data in originDataJsonArray:  # 是否怀孕
+        is_pregnancy = data["是否怀孕"]
+        for k, v in codeDictJsonMap["是否怀孕"].items():
+            if v is not None and v == is_pregnancy:
+                data["is_pregnancy"] = int(k) + 1
+                break
+    for data in originDataJsonArray:  # 是否特别残忍
+        is_particularly_cruel = data["是否特别残忍"]
+        for k, v in codeDictJsonMap["是否特别残忍"].items():
+            if v is not None and v == is_particularly_cruel:
+                data["is_particularly_cruel"] = int(k) + 1
+                break
+    for data in originDataJsonArray:  # 是否公开场合行凶
+        is_public = data["是否公开场合行凶"]
+        for k, v in codeDictJsonMap["是否公开场合行凶"].items():
+            if v is not None and v == is_public:
+                data["is_public"] = int(k) + 1
+                break
+    for data in originDataJsonArray:  # 是否使用凶器
+        is_weapon = data["是否使用凶器"]
+        for k, v in codeDictJsonMap["是否使用凶器"].items():
+            if v is not None and v == is_weapon:
+                data["is_weapon"] = int(k) + 1
+                break
+    for data in originDataJsonArray:  # 是否初犯偶犯
+        is_casual_offender = data["是否初犯偶犯"]
+        for k, v in codeDictJsonMap["是否初犯偶犯"].items():
+            if v is not None and v == is_casual_offender:
+                data["is_casual_offender"] = int(k) + 1
+                break
+    for data in originDataJsonArray:  # 是否构成累犯
+        is_recidivism = data["是否构成累犯"]
+        for k, v in codeDictJsonMap["是否构成累犯"].items():
+            if v is not None and v == is_recidivism:
+                data["is_recidivism"] = int(k) + 1
+                break
+    for data in originDataJsonArray:  # 前科是否是八种暴力性犯罪
+        is_violence_record = data["前科是否是八种暴力性犯罪"]
+        for k, v in codeDictJsonMap["前科是否是八种暴力性犯罪"].items():
+            if v is not None and v == is_violence_record:
+                data["is_violence_record"] = int(k) + 1
+                break
+    for data in originDataJsonArray:  # 被害人是否有过错
+        is_victim_fault = data["被害人是否有过错"]
+        for k, v in codeDictJsonMap["被害人是否有过错"].items():
+            if v is not None and v == is_victim_fault:
+                data["is_victim_fault"] = int(k) + 1
+                break
+    for data in originDataJsonArray:  # 是否积极赔偿被害人损失并取得刑事谅解
+        is_compensation = data["是否积极赔偿被害人损失并取得刑事谅解"]
+        for k, v in codeDictJsonMap["是否积极赔偿被害人损失并取得刑事谅解"].items():
+            if v is not None and v == is_compensation:
+                data["is_compensation"] = int(k) + 1
+                break
+
+    for data in originDataJsonArray:  # 判处结果
+        sentence_result = data["判处结果"]
+        for k, v in codeDictJsonMap["判处结果"].items():
+            if v is not None and v == sentence_result:
+                sentence_result_desc = codeDictJsonMap["判处结果分段"][k]
+                # print("当前判处结果：" + sentence_result + " 判处结果分段值为：" + sentence_result_desc)
+                for k_code, v_code in codeDictJsonMap["判处结果编码"].items():
+                    if v_code is not None and v_code == sentence_result_desc:
+                        data["sentence_result"] = int(k_code) + 1
+                        # print("当前判处结果分段id为：" + str(int(k_code) + 1))
+                        break
+                break
+    for data in originDataJsonArray:  # 赔偿数额
+        compensation_amount = data["赔偿数额"]
+        for k, v in codeDictJsonMap["赔偿数额"].items():
+            if v is not None and v == compensation_amount:
+                compensation_amount_desc = codeDictJsonMap["赔偿数额分段"][k]
+                print("当前赔偿数额：" + str(compensation_amount) + " 赔偿数额分段值为：" + str(compensation_amount_desc))
+                for k_code, v_code in codeDictJsonMap["赔偿数额编码"].items():
+                    if v_code is not None and v_code == compensation_amount_desc:
+                        data["compensation_amount"] = int(k_code) + 1
+                        print("当前赔偿数额分段id为：" + str(int(k_code) + 1))
+                        break
+                break
+
+    # 判处结果
+    # 判决结果是否过重
+    # 赔偿数额
+
+    resultDF = pd.json_normalize(originDataJsonArray)  # 转回dataFrame
+    saveDataToExcel(resultDF, "asset/西藏案件量刑数据(编码版本).xlsx")
 
 
 if __name__ == '__main__':
-    modifyData()
+    # modifyData()
+    codingData()
