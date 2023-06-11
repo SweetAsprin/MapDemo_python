@@ -10,7 +10,7 @@ locationHistoryList = {}
 
 
 def loadRequestedLocationList():
-    path = pathlib.Path("asset/查询历史记录.json")
+    path = pathlib.Path("../asset/查询历史记录.json")
     if path.exists():
         with open(str(path)) as jsonFile:
             jsonMap = json.load(jsonFile)
@@ -21,7 +21,7 @@ def loadRequestedLocationList():
 def saveRequestedLocation():
     if len(locationHistoryList) >= 0:
         print("开始保存当前地址请求记录到json文件")
-        path = pathlib.Path("asset/查询历史记录.json")
+        path = pathlib.Path("../asset/查询历史记录.json")
         if path.exists():
             path.unlink()
         with open(str(path), "w") as file:
@@ -112,7 +112,7 @@ def read_location_from_excel(path):
         newSheetMap[sheetName] = df
         saveRequestedLocation()
 
-    writer = pd.ExcelWriter("asset/中高风险地区统计表-包含坐标.xlsx")
+    writer = pd.ExcelWriter("../asset/中高风险地区统计表-包含坐标.xlsx")
     for sheetName in newSheetMap.keys():
         newSheetMap[sheetName].to_excel(writer, sheet_name=sheetName)
     writer.close()
@@ -166,7 +166,7 @@ def convertLocationExcelToJsonFile(locationExcelPath, patientCountExcelPath):
             record["date"] = "{}-{}".format(nameArray[0], nameArray[1])
             districtMap[row["district"]] = record
 
-    path = pathlib.Path("asset/totalData.json")
+    path = pathlib.Path("../asset/totalData.json")
     if path.exists():
         path.unlink()
     with open(str(path), "w") as file:

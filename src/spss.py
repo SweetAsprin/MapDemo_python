@@ -81,4 +81,4 @@ def readExcel(path):
 
 
 if __name__ == '__main__':
-    readExcel("asset/spss源数据.xlsx")
+    readExcel("../asset/spss源数据.xlsx")

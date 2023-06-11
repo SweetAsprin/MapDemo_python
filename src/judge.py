@@ -12,14 +12,14 @@ codeDictJsonMap = None
 
 # 初始化西藏地区行政区域数组
 def prepareTibetCityMap() -> json:
-    path = pathlib.Path("asset/tibetCityMap.json")
+    path = pathlib.Path("../asset/tibetCityMap.json")
     with open(str(path)) as jsonFile:
         return json.load(jsonFile)
 
 
 # 初始化西藏常见姓名数组
 def prepareTibetNameList() -> json:
-    path = pathlib.Path("asset/tibetName.json")
+    path = pathlib.Path("../asset/tibetName.json")
     with open(str(path)) as jsonFile:
         return json.load(jsonFile)
 
@@ -351,7 +351,7 @@ def modifyData():
     # print(cityMap)
     # print(tibetNameList)
     # path = pathlib.Path("asset/西藏案件量刑数据(缩略版本).xlsx")
-    path = pathlib.Path("asset/西藏案件量刑数据(完整版本).xlsx")
+    path = pathlib.Path("../asset/西藏案件量刑数据(完整版本).xlsx")
     originDataFrame = pd.read_excel(str(path), sheet_name="故意伤害罪")  # 读取原始数据
     originDataJsonArray: list = json.loads(originDataFrame.to_json(orient="records", force_ascii=False))  # 转成json格式
 
@@ -374,7 +374,7 @@ def modifyData():
 # 将格式化之后的数据进行编码处理
 def codingData():
     global codeDictJsonMap
-    path = pathlib.Path("asset/西藏案件量刑数据(待编码).xlsx")
+    path = pathlib.Path("../asset/西藏案件量刑数据(待编码).xlsx")
     codeDictFrame = pd.read_excel(str(path), sheet_name="编码字典")  # 读取编码字典数据
     codeDictJsonMap = json.loads(codeDictFrame.to_json(force_ascii=False))  # 转成json格式
     # print(codeDictJsonMap)
